@@ -1,0 +1,189 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Make an order</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <nav>
+            <ul>
+                <li><img src="images/logo.png" alt="logo" class="logo"></li>
+                <li><a href="#">О нас</a></li>
+                <li><a href="#">Партнеры</a></li>
+                <li><a href="#">Преимущества</a></li>
+                <li><a href="#">Контакты</a></li>
+                <li><a href="#">Стать курьером</a></li>
+                <li><a href="#">Стать клиентом</a></li>
+                <li><button type="submit" class="submit-button"><img src="images/box.png" alt = "box" class="box">Сделать заказ</button></li>
+                <li><button type="submit" class="submit-button2"><img src="images/human.png" alt = "human" class="human">User_name</button></li>
+            </ul>
+        </nav>
+    </header>
+    <form action="process_order.php" method="POST">
+    <main>
+        <h1>Оформление доставки</h1>
+        <h2 class="line"><a href="#">← Вернуться к списку заказов</a></h2>
+        <section class="main">
+            <h1>Выберите тариф</h1>
+            
+            <div class="card-conteiner">
+                    <h2>
+                        Отправитель - Получатель
+                    </h2>
+                        <div class="download-grid">
+                            <div class="download-column">
+                                <input type="radio" name="rate" value="199" id="rate1" class="rate-input">
+                                <label for="rate1" class="rate-label">
+                                <h3 class="color"><img src="images/time.png" alt="time" class="time">24 часа</h3>
+                                <h2 class="grid">Уведомление о доставке</h2>
+                                <h3 class="color">Заявка принимается до 17:00</h3>
+                                    <h3 class="text"> Доставка осуществляется на следующий рабочий день</h3>
+                                <h2 class="grid">От 199 ₽</h2>
+                            </label>
+                            </div>
+                            <div class="download-column">
+                                <input type="radio" name="rate" value="349" id="rate2" class="rate-input">
+                                <label for="rate2">
+                                <h3 class="color"><img src="images/time.png" alt="time" class="time">24 часа</h3>
+                                <h2 class="grid">24 часа</h2>
+                                <h3 class="color">Заявка принимается до 17:00</h3>
+                                    <h3 class="text"> Доставка осуществляется на следующий рабочий день</h3>
+                                <h2 class="grid">От 349 ₽</h2>
+                            </label>
+                            </div>
+                            <div class="download-column">
+                                <input type="radio" name="rate" value="429" id="rate3" class="rate-input">
+                                <label for="rate3" class="rate-label">
+                                <h3 class="color"><img src="images/time.png" alt="time" class="time">24 часа</h3>
+                                <h2 class="grid">Рабочий</h2>
+                                <h3 class="color">Заявка принимается до 13:00 </h3>
+                                <h3 class="text"> Доставка осуществляется в этот же рабочий день</h3>
+                                <h2 class="grid">От 429 ₽</h2>
+                            </label>
+                            </div>
+                            <div class="download-column">
+                                <input type="radio" name="rate" value="499" id="rate4" class="rate-input">
+                                <label for="rate4" class="rate-label">
+                                <h3 class="color"><img src="images/time.png" alt="time" class="time">3 часа</h3>
+                                <h2 class="grid">Быстрый</h2>
+                                <h3 class="color">Заявка принимается до 15:00 </h3>
+                                    <h3 class="text">Доставка осуществляется в этот же рабочий день</h3>
+                                <h2 class="grid">От 499 ₽</h2>
+                            </label>
+                            </div>
+                            <div class="download-column">
+                                <input type="radio" name="rate" value="699" id="rate5" class="rate-input">
+                                <label for="rate5" class="rate-label">
+                                <h3 class="color"><img src="images/time.png" alt="time" class="time">1 час</h3>
+                                <h2 class="grid">За час!</h2>
+                                <h3 class="text">Заявки принимаются только по предварительному согласованию сторон</h3>
+                                <h2 class="grid">От 699 ₽</h2>
+                            </label>
+                            </div>
+                        </div>
+                        <div class="card-conteiner">
+                            <h2>
+                                Отправитель - Получатель - Отправитель
+                            </h2>
+                            <div class="download-grid">
+                                <div class="download-column">
+                                    <input type="radio" name="rate" value="699" id="rate6" class="rate-input">
+                                    <label for="rate6" class="rate-label">
+                                    <h3 class="color"><img src="images/time.png" alt="time" class="time">5 часов</h3>
+                                    <h2 class="grid">Индивидуальный</h2>
+                                    <h3 class="text">В тариф включено 10 минут бесплатного ожидания</h3>
+                                    <h2 class="grid">От 699 ₽</h2>
+                                </label>
+                                </div>
+                                <div class="download-column">
+                                    <input type="radio" name="rate" value="1079" id="rate7" class="rate-input">
+                                    <label for="rate7" class="rate-label">
+                                    <h3 class="color"><img src="images/time.png" alt="time" class="time">2 часа</h3>
+                                    <h2 class="grid">Индивидуальный</h2>
+                                    <h3 class="text">В тариф включено 10 минут бесплатного ожидания</h3>
+                                    <h2 class="grid">От 1079 ₽</h2>
+                                </label>
+                                </div>
+                            </div>
+                        </div>
+            </div>
+            </div>
+    </section>
+    <div class="weight">
+        <h1>Выберите вес заказа</h1>
+        <ul>
+            <li><button type="button" class="submit-button3 weight-button" data-weight="0.1">До 100 г</button></li>
+            <li><button type="button" class="submit-button3 weight-button" data-weight="0.5">До 500 г</button></li>
+            <li><button type="button" class="submit-button3 weight-button" data-weight="0.8">До 800 г</button></li>
+            <li><button type="button" class="submit-button3 weight-button" data-weight="1">До 1 кг</button></li>
+        </ul>
+    </div>
+    <input type="hidden" name="weight" id="weight-input" class="rate-input">
+        <script src="index.js"></script>
+        <section id="help">
+            <table>
+                <thead>
+                    <tr>
+                        <th><img src="images/line.png" alt=line class="arrow"></th>
+                        <th><h1 class="form">Отправитель</h1>
+                            <fieldset>
+                                <div class="form-group">
+                                    <input type="text" id="recipient_address" name="recipient_address" placeholder="Адрес" required>
+                                </div>
+                                <div class="form-group">
+                                    <input type="tel" id="recipient_phone" name="recipient_phone" placeholder="Телефон" required>
+                                </div>
+                                <div class="form-group">
+                                    <input type="text" id="recipient_fio" name="recipient_fio" placeholder="ФИО" required>
+                                </div>
+                                <div class="form-group1">
+                                    <input type="text" id="recipient_organization" name="recipient_organization" placeholder="Организация">
+                                    <button type="submit" class="submit-button"><img src="images/book.png" alt = "box" class="box">Адресная книга</button>
+                                </div>
+                                <div class="form-group">
+                                    <textarea id="courier_task" name="courier_task" rows="4" cols="50" placeholder="Задание для курьера"></textarea>
+                                </div>
+                            </fieldset>
+                            <div class="form-group2">
+                                <input type="checkbox" id="agreement" name="agreement" required>
+                                <label for="agreement"> Сохранить в адресную книгу</label>
+                            </div>
+                            <h1 class="form">Получатель</h1></th>
+                    </tr>
+                </thead>
+            </table>
+            <fieldset class="class2">
+                <div class="form-group">
+                    <input type="text" id="recipient_address" name="recipient_address" placeholder="Адрес" required>
+                </div>
+                <div class="form-group">
+                    <input type="tel" id="recipient_phone" name="recipient_phone" placeholder="Телефон" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="recipient_fio" name="recipient_fio" placeholder="ФИО" required>
+                </div>
+                <div class="form-group1">
+                    <input type="text" id="recipient_organization" name="recipient_organization" placeholder="Организация">
+                    <button type="submit" class="submit-button"><img src="images/book.png" alt = "box" class="box">Адресная книга</button>
+                </div>
+                <div class="form-group">
+                    <textarea id="courier_task" name="courier_task" rows="4" cols="50" placeholder="Задание для курьера"></textarea>
+                </div>
+            </fieldset>
+            <div class="form-group3">
+                <input type="checkbox" id="agreement" name="agreement" required>
+                <label for="agreement"> Сохранить в адресную книгу</label>
+            </div>
+            <button type="submit" class="submit-button1"><img src="images/box.png" alt = "box" class="box">Сделать заказ</button>
+        </section>
+        <footer></footer>
+    </main>
+    </form>
+</body>
+</html>
