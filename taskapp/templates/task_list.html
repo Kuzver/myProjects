@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Задачи и проекты{% endblock %}
+
+{% block content %}
+<h2>Список задач и проектов</h2>
+
+{% if tasks %}
+    <table class="table table-bordered mt-4">
+        <thead class="table-light">
+            <tr>
+                <th>ID задачи</th>
+                <th>Название задачи</th>
+                <th>Статус</th>
+                <th>Проект</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for task in tasks %}
+                <tr>
+                    <td>{{ task.0 }}</td>
+                    <td>{{ task.1 }}</td>
+                    <td>{{ task.2 }}</td>
+                    <td>{{ task.3 }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>Задачи отсутствуют.</p>
+{% endif %}
+
+<a href="/" class="btn btn-outline-primary mt-3">На главную</a>
+{% endblock %}

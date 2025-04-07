@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %}Главная{% endblock %}
+
+{% block content %}
+<h1>Добро пожаловать в TaskMaster</h1>
+<a href="{% url 'register' %}" class="btn btn-success mt-3">Перейти к регистрации</a>
+<a href="{% url 'task_list' %}" class="btn btn-info mt-3">Посмотреть задачи и проекты</a>
+
+{% endblock %}
