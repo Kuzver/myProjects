@@ -1,0 +1,510 @@
+{% extends 'taskapp/base.html' %}
+{% load static %}
+
+{% block title %}Календарь с задачами | TaskMaster{% endblock %}
+
+{% block content %}
+<style>
+  .calendar { border-collapse: collapse; width: 100%; }
+  .calendar th, .calendar td {
+    border: 1px solid #ccc;
+    vertical-align: top;
+    height: 120px;
+    width: 14.28%;
+    padding: 4px;
+    position: relative;
+  }
+  .calendar td.has-tasks {
+    background: #f0f8ff;
+    cursor: pointer;
+  }
+  .day-number {
+    font-weight: bold;
+  }
+  .task-preview {
+    margin-top: 4px;
+    font-size: 0.8em;
+    color: #333;
+  }
+  .task-preview-item {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .task-preview-more {
+    font-style: italic;
+    color: #666;
+  }
+  .card {
+    position: absolute;
+    top: 24px;
+    left: 4px;
+    right: 4px;
+    background: #fff;
+    border: 1px solid #999;
+    padding: 8px;
+    z-index: 10;
+    max-height: 300px;
+    overflow-y: auto;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .close-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+  }
+  .task {
+    margin-bottom: 6px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 4px;
+  }
+  select {
+    margin: 4px 4px 4px 0;
+  }
+</style>
+
+<h2>Календарь с задачами</h2>
+
+<div class="controls">
+  <button id="prevMonthBtn">◀ Месяц</button>
+  <p id="monthYear"></p>
+  <button id="nextMonthBtn">Месяц ▶</button>
+</div>
+
+<div id="data-holder"
+     data-user-id="{{ user.id }}"
+     data-project-id="{{ project.id|default_if_none:'-1' }}"
+     data-is-admin="{{ user.is_staff|yesno:'true,false' }}">
+</div>
+{% if project %}
+  <h3>Проект: {{ project.name }}</h3>
+  <p>{{ project.description }}</p>
+{% else %}
+  <p>Проект не выбран</p>
+{% endif %}
+
+
+<table id="calendar" class="calendar">
+  <thead>
+    <tr>
+      <th>пн</th>
+      <th>вт</th>
+      <th>ср</th>
+      <th>чт</th>
+      <th>пт</th>
+      <th>сб</th>
+      <th>вс</th>
+    </tr>
+  </thead>
+  <tbody id="calendar-body">
+    <!-- Дни месяца вставляются с JS -->
+  </tbody>
+</table>
+
+<script>
+  const currentDate = new Date();
+  const holder = document.getElementById("data-holder");
+  const userId = parseInt(holder.dataset.userId);
+  const projectId = parseInt(holder.dataset.projectId);
+
+  let monthlyTasks = {};
+  let openCardDateStr = "";
+
+  const priorityOptions = ['Высокий', 'Средний', 'Низкий'];
+  const priorityLabels = {
+    'Высокий': 'Высокий',
+    'Средний': 'Средний',
+    'Низкий': 'Низкий'
+  };
+
+  const statusOptions = ['Новая', 'В работе', 'Завершена', 'Отложена'];
+  const statusLabels = {
+    'Новая': 'Новая',
+    'В работе': 'В работе',
+    'Завершена': 'Сделано',
+    'Отложена': 'Отложена'
+  };
+
+  function formatDate(year, month, day) {
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  function updateTask(taskId, updatedFields, dateStr) {
+    return fetch(`/api/tasks/${taskId}/`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify(updatedFields)
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`Ошибка обновления: ${response.status}`);
+      return response.json();
+    })
+    .then(updatedTask => {
+      // Обновляем локальную копию задачи в monthlyTasks
+      if (monthlyTasks[dateStr]) {
+        const index = monthlyTasks[dateStr].findIndex(t => t.id === taskId);
+        if (index !== -1) {
+          // Обновляем только поля, которые пришли с сервера
+          Object.assign(monthlyTasks[dateStr][index], updatedTask);
+        }
+      }
+
+      if (openCardDateStr === dateStr) {
+        renderCard(dateStr);
+      }
+
+      return updatedTask;
+    })
+    .catch(error => {
+      console.error('Ошибка при обновлении задачи:', error);
+      alert('Не удалось обновить задачу.');
+    });
+  }
+
+  function fetchTasks(dateStr) {
+    const url = new URL('/taskapp/api_task_list/', window.location.origin);
+    url.searchParams.append('date', dateStr);
+    url.searchParams.append('user_id', userId);
+    if (Number.isInteger(projectId)) {
+      url.searchParams.append('project_id', projectId);
+    }
+
+    return fetch(url)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
+      .then(tasks => {
+        monthlyTasks[dateStr] = tasks;
+        return tasks;
+      })
+      .catch(err => {
+        console.error('Ошибка:', err);
+        alert('Не удалось загрузить задачи.');
+        return [];
+      });
+  }
+
+  function renderCard(dateStr) {
+    const cell = document.querySelector(`td[data-date="${dateStr}"]`);
+    if (!cell) return;
+
+    // Удаляем старую карточку если есть, чтобы избежать наложений
+    const oldCard = cell.querySelector('.card');
+    if (oldCard) oldCard.remove();
+
+    // Создаём карточку заново с актуальными данными
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    card.innerHTML = `
+      <div class="card-header">
+        <p>Задачи на ${dateStr}</p>
+        <button class="close-btn">❌</button>
+      </div>
+      <div class="tasks-container" id="tasks-${dateStr}">Загрузка...</div>
+      <button class="add-task-btn">Добавить задачу</button>
+    `;
+
+    const closeBtn = card.querySelector('.close-btn');
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      card.remove();
+      openCardDateStr = "";
+    };
+
+    const addTaskBtn = card.querySelector('.add-task-btn');
+    addTaskBtn.onclick = () => addTask(dateStr);
+
+    cell.appendChild(card);
+
+    const container = card.querySelector(`.tasks-container`);
+    container.innerHTML = '';
+
+    const tasks = monthlyTasks[dateStr] || [];
+
+    tasks.forEach(task => {
+      const taskBlock = document.createElement('div');
+      taskBlock.className = 'task';
+
+      // Краткое имя задачи
+      const taskSummary = document.createElement('span');
+      taskSummary.textContent = task.task_name.length > 20
+        ? task.task_name.slice(0, 17) + "..."
+        : task.task_name;
+      taskBlock.appendChild(taskSummary);
+
+      // Статус задачи (текст)
+      const statusText = document.createElement('div');
+      statusText.textContent = `Статус: ${statusLabels[task.task_status] || '—'}`;
+      taskBlock.appendChild(statusText);
+
+      // Приоритет задачи (текст)
+      const priorityText = document.createElement('div');
+      priorityText.textContent = `Приоритет: ${priorityLabels[task.task_priority] || '—'}`;
+      taskBlock.appendChild(priorityText);
+
+      // Селектор приоритета (обновление через updateTask)
+      const prioritySelect = document.createElement('select');
+      priorityOptions.forEach(optionValue => {
+        const option = document.createElement('option');
+        option.value = optionValue;
+        option.textContent = priorityLabels[optionValue];
+        if (optionValue === task.task_priority) option.selected = true;
+        prioritySelect.appendChild(option);
+      });
+      prioritySelect.onchange = (e) => {
+        e.stopPropagation();
+        const newPriority = prioritySelect.value;
+        updateTask(task.id, { task_priority: newPriority }, dateStr);
+      };
+      taskBlock.appendChild(prioritySelect);
+
+      // Селектор статуса
+      const statusSelect = document.createElement('select');
+      statusOptions.forEach(optionValue => {
+        const option = document.createElement('option');
+        option.value = optionValue;
+        option.textContent = statusLabels[optionValue];
+        if (optionValue === task.task_status) option.selected = true;
+        statusSelect.appendChild(option);
+      });
+      statusSelect.onchange = (e) => {
+        e.stopPropagation();
+        const newStatus = statusSelect.value;
+        updateTask(task.id, { task_status: newStatus }, dateStr);
+      };
+      taskBlock.appendChild(statusSelect);
+
+      // Кнопка удаления
+      const btn = document.createElement('button');
+      btn.textContent = "Удалить";
+      btn.onclick = () => {
+        fetch(`/api/tasks/${task.id}/`, {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        })
+          .then(res => {
+            if (!res.ok) throw new Error(`Ошибка удаления: ${res.status}`);
+            return fetchMonthlyTasks(currentDate.getFullYear(), currentDate.getMonth());
+          })
+          .then(() => {
+            fetchTasks(dateStr).then(() => {
+              renderCalendar();
+              if (openCardDateStr === dateStr) renderCard(dateStr);
+            });
+          })
+          .catch(err => console.error('Ошибка при удалении задачи:', err));
+      };
+      taskBlock.appendChild(btn);
+
+      container.appendChild(taskBlock);
+    });
+  }
+
+  function addTask(dateStr) {
+    const taskText = prompt("Введите задачу:");
+    if (taskText) {
+      fetch('/taskapp/api/add_task/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+          task_name: taskText,
+          task_should_done_date: dateStr,
+          creator: userId,
+          task_implementer: userId,
+          task_priority: 'Средний',
+          task_status: 'Новая',
+          project: projectId !== -1 ? projectId : null
+        })
+      })
+        .then(res => {
+          if (!res.ok) throw new Error("Ошибка при создании задачи");
+          return res.json();
+        })
+        .then(() => {
+          return Promise.all([
+            fetchMonthlyTasks(currentDate.getFullYear(), currentDate.getMonth()),
+            fetchTasks(dateStr)
+          ]);
+        })
+        .then(() => {
+          renderCalendar();
+          if (openCardDateStr === dateStr) renderCard(dateStr);
+          else {
+            const cell = document.querySelector(`td[data-date="${dateStr}"]`);
+            if (cell) toggleCard(cell, true);
+          }
+        })
+        .catch(err => console.error('Ошибка:', err));
+    }
+  }
+
+  function toggleCard(cell, keepOpen = false) {
+    const dateStr = cell.dataset.date;
+
+    if (!keepOpen && openCardDateStr === dateStr) {
+      const existingCard = cell.querySelector('.card');
+      if (existingCard) existingCard.remove();
+      openCardDateStr = "";
+      return;
+    }
+
+    document.querySelectorAll('.card').forEach(c => c.remove());
+    openCardDateStr = dateStr;
+
+    renderCard(dateStr);
+  }
+
+  function renderCalendar() {
+    const calendarBody = document.getElementById("calendar-body");
+    const monthYearDisplay = document.getElementById("monthYear");
+
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const totalDays = lastDay.getDate();
+
+    monthYearDisplay.textContent = currentDate.toLocaleString('default', { month: 'long' }) + ' ' + year;
+    calendarBody.innerHTML = "";
+
+    let row = document.createElement("tr");
+    const startDay = (firstDay.getDay() + 6) % 7;
+
+    for (let i = 0; i < startDay; i++) {
+      row.appendChild(document.createElement("td"));
+    }
+
+    for (let day = 1; day <= totalDays; day++) {
+      const cell = document.createElement("td");
+      cell.className = "cell";
+      const dateStr = formatDate(year, month, day);
+      cell.dataset.date = dateStr;
+
+      cell.onclick = (e) => {
+        // Проверяем, что клик был по дню, а не по селектам и кнопкам внутри
+        if (e.target !== cell && !e.target.classList.contains("day-number")) return;
+        toggleCard(cell);
+      };
+
+      const dayNumber = document.createElement("div");
+      dayNumber.textContent = day;
+      dayNumber.className = "day-number";
+      cell.appendChild(dayNumber);
+
+      const tasks = monthlyTasks[dateStr] || [];
+
+      if (tasks.length > 0) {
+        cell.classList.add("has-tasks");
+
+        const taskList = document.createElement("div");
+        taskList.className = "task-preview";
+
+        const previewLimit = 2;
+        tasks.slice(0, previewLimit).forEach(task => {
+          const taskItem = document.createElement("div");
+          taskItem.textContent = task.task_name.length > 20
+            ? task.task_name.slice(0, 17) + "..."
+            : task.task_name;
+          taskItem.className = "task-preview-item";
+          taskList.appendChild(taskItem);
+        });
+
+        if (tasks.length > previewLimit) {
+          const moreItem = document.createElement("div");
+          moreItem.textContent = `+ ещё ${tasks.length - previewLimit}`;
+          moreItem.className = "task-preview-more";
+          taskList.appendChild(moreItem);
+        }
+
+        cell.appendChild(taskList);
+      }
+
+      row.appendChild(cell);
+      if ((startDay + day) % 7 === 0) {
+        calendarBody.appendChild(row);
+        row = document.createElement("tr");
+      }
+    }
+
+    if (row.children.length > 0) calendarBody.appendChild(row);
+
+    if (openCardDateStr) {
+      const openCell = document.querySelector(`td[data-date="${openCardDateStr}"]`);
+      if (openCell) toggleCard(openCell, true);
+    }
+  }
+
+  function changeMonth(dir) {
+    currentDate.setMonth(currentDate.getMonth() + dir);
+    fetchMonthlyTasks(currentDate.getFullYear(), currentDate.getMonth())
+      .then(() => renderCalendar());
+  }
+
+  function fetchMonthlyTasks(year, month) {
+    const url = new URL('/taskapp/api/tasks_by_month/', window.location.origin);
+    url.searchParams.set('year', year);
+    url.searchParams.set('month', month + 1);
+    url.searchParams.set('user_id', userId);
+    if (projectId && projectId !== -1) {
+      url.searchParams.set('project_id', projectId);
+    }
+
+    return fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        const grouped = {};
+        data.forEach(task => {
+          const date = task.task_should_done_date || task.task_date || '';
+          if (!grouped[date]) grouped[date] = [];
+          grouped[date].push(task);
+        });
+        monthlyTasks = grouped;
+      });
+  }
+
+  window.onload = function () {
+    const today = formatDate(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+    fetchMonthlyTasks(currentDate.getFullYear(), currentDate.getMonth())
+      .then(() => {
+        renderCalendar();
+        fetchTasks(today).then(() => {
+          // Показываем задачи на сегодня в карточке, если карточка открыта
+          if (openCardDateStr === today) {
+            renderCard(today);
+          }
+        });
+      });
+  };
+</script>
+
+ {% endblock %}

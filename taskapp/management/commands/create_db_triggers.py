@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.db import connection
 
+
 class Command(BaseCommand):
     help = "Создает триггеры и функции в базе данных"
 
@@ -95,7 +96,134 @@ class Command(BaseCommand):
                 RETURN 'Пользователь успешно зарегистрирован';
             END;
             $$ LANGUAGE plpgsql;
+            """,
             """
+            CREATE OR REPLACE PROCEDURE assign_task_by_admin(
+                IN p_task_id INT,
+                IN p_implementer_id INT,
+                IN p_admin_id INT,
+                OUT result TEXT
+            )
+            LANGUAGE plpgsql
+            AS $$
+            DECLARE
+                v_is_admin BOOLEAN;
+            BEGIN
+                -- Проверка, является ли пользователь админом проекта
+                SELECT EXISTS (
+                    SELECT 1 FROM ProjectMember 
+                    WHERE user_id = p_admin_id 
+                    AND project_role = 'admin'
+                    AND project_id = (SELECT project_id FROM Task WHERE task_id = p_task_id)
+                ) INTO v_is_admin;
+
+                IF NOT v_is_admin THEN
+                    result := 'Ошибка: Только администратор проекта может назначать исполнителя';
+                    RETURN;
+                END IF;
+
+                -- Назначение исполнителя
+                UPDATE Task SET task_implementer_id = p_implementer_id WHERE task_id = p_task_id;
+
+                result := 'Исполнитель успешно назначен';
+
+            EXCEPTION WHEN OTHERS THEN
+                -- обработка любых других ошибок
+                result := 'Произошла ошибка при назначении исполнителя';
+            END;
+            $$;
+            BEGIN;
+            CALL assign_task_by_admin(1, 2, 3, NULL);
+            COMMIT;
+                """,
+            """
+                -- Назначение нового администратора проекта
+                CREATE OR REPLACE FUNCTION set_new_project_admin(
+                p_project_id INT,
+                p_current_admin_id INT,
+                p_new_admin_id INT
+            )
+            RETURNS TEXT AS $$
+            DECLARE
+                v_is_admin BOOLEAN;
+            BEGIN
+                -- Проверка, является ли вызывающий пользователь текущим админом
+                SELECT EXISTS (
+                    SELECT 1 FROM ProjectMember 
+                    WHERE user_id = p_current_admin_id 
+                    AND project_role = 'admin' 
+                    AND project_id = p_project_id
+                ) INTO v_is_admin;
+
+                IF NOT v_is_admin THEN
+                    RETURN 'Ошибка: Только текущий администратор может назначить нового';
+                END IF;
+
+                -- Обновление ролей
+                UPDATE ProjectMember
+                SET project_role = 'user'
+                WHERE project_id = p_project_id AND user_id = p_current_admin_id;
+
+                UPDATE ProjectMember
+                SET project_role = 'admin'
+                WHERE project_id = p_project_id AND user_id = p_new_admin_id;
+
+                RETURN 'Новый администратор успешно назначен';
+            END;
+            $$ LANGUAGE plpgsql;
+
+        """,
+            """
+            -- Функция, запрещающая удаление последнего админа
+            CREATE OR REPLACE FUNCTION prevent_admin_removal()
+            RETURNS TRIGGER AS $$
+            DECLARE
+                admin_count INT;
+            BEGIN
+                SELECT COUNT(*) INTO admin_count 
+                FROM ProjectMember 
+                WHERE project_id = OLD.project_id AND project_role = 'admin';
+
+                IF OLD.project_role = 'admin' AND admin_count <= 1 THEN
+                    RAISE EXCEPTION 'Нельзя удалить последнего администратора проекта';
+                END IF;
+
+                RETURN OLD;
+            END;
+            $$ LANGUAGE plpgsql;
+            -- Триггер
+            CREATE TRIGGER trg_prevent_admin_delete
+            BEFORE DELETE ON ProjectMember
+            FOR EACH ROW
+            EXECUTE FUNCTION prevent_admin_removal();
+
+            """,
+            """CREATE OR REPLACE FUNCTION send_reminder_notifications() 
+            RETURNS void AS $$
+            DECLARE
+                reminder RECORD;
+            BEGIN
+                FOR reminder IN
+                    SELECT * FROM Reminder
+                    WHERE date_of_remind <= CURRENT_TIMESTAMP AND type_of_remind IN ('Email', 'Push')
+                LOOP
+                    -- Отправка уведомлений по Email или Push (в реальной системе это будет интеграция с внешними сервисами)
+                    IF reminder.type_of_remind = 'Email' THEN
+                        -- Логика отправки email (например, через внешнюю библиотеку или API)
+                        RAISE NOTICE 'Отправка email на задачу: %', reminder.task_id;
+                    ELSIF reminder.type_of_remind = 'Push' THEN
+                        -- Логика отправки push-уведомлений
+                        RAISE NOTICE 'Отправка push-уведомления на задачу: %', reminder.task_id;
+                    END IF;
+                END LOOP;
+            END;
+            $$ LANGUAGE plpgsql;
+            -- Создаем триггер
+            CREATE TRIGGER send_reminder_notifications_trigger
+            AFTER INSERT OR UPDATE ON Reminder
+            FOR EACH ROW
+            EXECUTE FUNCTION send_reminder_notifications();
+            """,
         ]
 
         with connection.cursor() as cursor:

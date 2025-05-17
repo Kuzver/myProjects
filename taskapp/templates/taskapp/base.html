@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+    <title>{% block title %}TaskMaster{% endblock %}</title>
+
+    <style>
+        /* Твои стили + новые стили для модалки */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 400px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal-button {
+            margin-top: 10px;
+            padding: 10px;
+            width: 80%;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .profile-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.profile-dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #D9D9D9;
+    color: black;
+    min-width: 200px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    right: 0; /* Чтобы выплывало аккуратно вправо */
+}
+
+.profile-dropdown:hover .profile-dropdown-content {
+    display: block;
+}
+
+.profile-dropdown-content p {
+    margin: 5px 0;
+}
+.nav-links {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    color: black;
+}
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: #D9D9D9;
+    color: black;
+}
+
+    </style>
+</head>
+<body>
+
+    <!-- Хеддер -->
+    <header>
+        <div class="header-container">
+            <h1><a href="/" style="color: inherit; text-decoration: none;">TaskMaster</a></h1>
+            <nav class="nav-links">
+                <a href="{% url 'home' %}">Главная</a>
+                <a href="{% url 'task_list' user.id %}">Задачи</a>
+                <a href="javascript:void(0);" id="openProjectsModal">Проекты</a> <!-- Кнопка открытия модалки -->
+                <div class="profile-dropdown">
+    <a href="javascript:void(0)">Профиль ▾</a>
+    <div class="profile-dropdown-content">
+        {% if user.is_authenticated %}
+            <p><strong>Создано задач:</strong> {{ user.created_tasks.count }}</p>
+        {% else %}
+            <p>Вы не вошли</p>
+            <a href="{% url 'taskapp/home' %}">Войти</a>
+        {% endif %}
+    </div>
+</div>
+
+            </nav>
+        </div>
+    </header>
+
+    <!-- Контент -->
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Модалка проектов -->
+    <!-- Модалка проектов -->
+<div id="projectsModal" class="modal">
+    <div class="modal-content">
+        <span class="close" id="closeProjectsModal">&times;</span>
+        <h2>Проекты</h2>
+
+        <button class="modal-button" id="createProjectButton">Создать новый проект</button>
+
+        <div id="projectList">
+            {% if projects_with_members %}
+                {% for item in projects_with_members %}
+                    <div>
+                        <h3>{{ item.project.name }}</h3>
+                        <p>Участников: {{ item.members|length }}</p>
+                        <button class="modal-button project-button" data-project-id="{{ item.project.id }}">
+                            Перейти к проекту
+                        </button>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>Вы не участвуете ни в одном проекте.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+
+    <!-- Футер -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-links">
+                <a href="#">&copy; 2025 TaskMaster. Все права защищены.</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Скрипты -->
+    <script>
+        // Открытие/закрытие модалки
+        document.getElementById("openProjectsModal").onclick = function() {
+            document.getElementById("projectsModal").style.display = "block";
+        }
+        document.getElementById("closeProjectsModal").onclick = function() {
+            document.getElementById("projectsModal").style.display = "none";
+        }
+        window.onclick = function(event) {
+            if (event.target == document.getElementById("projectsModal")) {
+                document.getElementById("projectsModal").style.display = "none";
+            }
+        }
+
+        // Обработка кнопок проектов
+        document.addEventListener('DOMContentLoaded', function() {
+            let projectButtons = document.querySelectorAll('.project-button');
+            projectButtons.forEach(function(button) {
+                button.addEventListener('click', function() {
+                    let projectId = this.dataset.projectId;
+                    window.location.href = `/taskapp/team_work/${projectId}/`; // переход на календарь проекта
+                });
+            });
+
+            document.getElementById('createProjectButton').onclick = function() {
+                window.location.href = `/taskapp/create_team/`; // переход на создание проекта
+            }
+        });
+    </script>
+
+</body>
+</html>

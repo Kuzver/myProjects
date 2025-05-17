@@ -1,0 +1,20 @@
+<tbody>
+    {% for week in calendar_data %}
+    <tr>
+        {% for day in week %}
+        <td onclick="openCard({{ day.day }}, {{ selected_month }}, {{ selected_year }})">
+            <div>{{ day.day }}</div>
+            {% if day.tasks %}
+                <div class="marker"></div>
+                <div class="task-list">
+                    <p>Задачи:</p>
+                    {% for task in day.tasks %}
+                    <p>{{ task.task_name }} ({{ task.task_priority }})</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </td>
+        {% endfor %}
+    </tr>
+    {% endfor %}
+</tbody>
